@@ -42,7 +42,7 @@ function loadLevel(level) {
 
 	loadJSON(vApp.levels[levelIndex], function(dotMap) {
 		vApp.dotMap = dotMap;							// the 2d array, 1 represents vertex
-		vApp.blocks = vBlockGraph.getBlocks(dotMap);	// info for each square (made by dots)
+		vApp.blockGraph = new vBlockGraph(dotMap);	// info for each square (made by dots)
 		drawGraph(dotMap);
 	});
 
@@ -91,7 +91,7 @@ function drawGraph(dotMap) {
 }
 
 function getLineColor(row1, coln1, row2, coln2) {
-	if (vBlockGraph.isEdgeSelected(row1, coln1, row2, coln2)) {
+	if (vApp.blockGraph.isEdgeSelected(row1, coln1, row2, coln2)) {
 		return 'rgb(115, 152, 185)';
 	} else {
 		return 'rgba(115, 152, 185, 0.1)';
@@ -172,12 +172,14 @@ function bindCanvas() {
 		
 		var dragSource = vApp.dragSource;
 
+		// request for animation frame only if the previous one has been executed
 		if (!vApp.requestedFrame) {
 			vApp.requestedFrame = true;
 			vApp.requestId = window.requestAnimationFrame(function() {
-				drawGraph(vApp.dotMap);
+				drawGraph(vApp.dotMap);		// paints the dot graph
 				ctx.save();
 				ctx.translate(dragSource.x, dragSource.y);
+				// paint the line which user is currently stretching
 				drawLine(
 					xMove - vApp.dragSource.x, 
 					yMove - vApp.dragSource.y, 
@@ -210,8 +212,9 @@ function bindCanvas() {
 		if (dragDest) {
 			var sourceIndex = dotCoordInIndex(vApp.dragSource);
 			var destIndex = dotCoordInIndex(dragDest);
-			if (isNeighbour(sourceIndex, destIndex)) {
-				var nextChance = vBlockGraph.addToBlockData(sourceIndex, destIndex);
+			var edgeSelected = vApp.blockGraph.isEdgeSelected(sourceIndex, destIndex);
+			if (isNeighbour(sourceIndex, destIndex) && !edgeSelected) {
+				var nextChance = vApp.blockGraph.addToBlockData(sourceIndex, destIndex);
 				if (nextChance) { console.log('user has acquired a block'); }
 			}
 		}
