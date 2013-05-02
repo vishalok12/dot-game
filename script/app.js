@@ -215,7 +215,11 @@ function bindCanvas() {
 			var edgeSelected = vApp.blockGraph.isEdgeSelected(sourceIndex, destIndex);
 			if (isNeighbour(sourceIndex, destIndex) && !edgeSelected) {
 				var nextChance = vApp.blockGraph.addToBlockData(sourceIndex, destIndex);
-				if (nextChance) { console.log('user has acquired a block'); }
+				if (nextChance) {
+					console.log('user has acquired a block');
+				} else {
+					vBot.takeTurn();
+				}
 			}
 		}
 		drawGraph(vApp.dotMap);
@@ -258,7 +262,7 @@ function getVertexClicked(x, y) {
 	var xDifference = Math.abs(expectedColumn * vApp.dotDistance - x);
 	var yDifference = Math.abs(expectedRow * vApp.dotDistance - y);
 	
-	if (Math.pow(xDifference, 2) + Math.pow(yDifference, 2) < 225) {
+	if (Math.pow(xDifference, 2) + Math.pow(yDifference, 2) < 400) {
 		return dotCoordInPixel({
 			row: expectedRow,
 			column: expectedColumn

@@ -173,12 +173,13 @@ BlockGraph.prototype.unselectedEdges = function(block) {
 	return edges;
 }
 
-BlockGraph.prototype.sidesInBlock = function(minDrawnSides, maxDrawnSides) {
+BlockGraph.prototype.sidesInBlock = function(minDrawnEdges, maxDrawnEdges) {
 	var blocks = this.blocks;
 	var row, column;
 	var blocksRow, block;
 	var drawnSidesCount;
-	var acceptedSides = [];
+	var acceptedEdges = [], unselectedEdges;
+	var that = this;
 
 	for (row = 0; row < blocks.length; row++) {
 		blocksRow = blocks[row];
@@ -187,12 +188,20 @@ BlockGraph.prototype.sidesInBlock = function(minDrawnSides, maxDrawnSides) {
 			block = blocksRow[column];
 			drawnSidesCount = block.get('selected');
 			
-			if (drawnSidesCount <= maxDrawnSides && drawnSidesCount >= minDrawnSides) {
-				acceptedBlocks.push(block);
+			if (drawnSidesCount <= maxDrawnEdges && drawnSidesCount >= minDrawnEdges) {
+				unselectedEdges = this.unselectedEdges(block);
+				acceptedEdges = acceptedEdges.concat(unselectedEdges.filter(function(edge) {
+					var nBlocks = that.getNeighbourBlocks(edge.sourceIndex, edge.destIndex);
+					return nBlocks.every(function(block) {
+						var selectedEdges = block.get('selected');
+						return selectedEdges <= maxDrawnEdges &&
+							selectedEdges >= minDrawnEdges;
+					});
+				}));
 			}
 		}
 	}
-	return acceptedSides;
+	return acceptedEdges;
 };
 
 window.vBlockGraph = BlockGraph;
