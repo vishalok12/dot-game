@@ -258,6 +258,11 @@ function getVertexClicked(x, y) {
 	var expectedColumn = Math.round(x / vApp.dotDistance);
 	var expectedRow = Math.round(y / vApp.dotDistance);
 
+	if (expectedRow + 1 > vApp.dotMap.length || 
+			expectedColumn + 1 > vApp.dotMap[expectedRow].length) {
+		return null;
+	}
+
 	// if the distance between the expected vertex and clicked point is less than 15
 	// then assume the vertex as clicked
 	var xDifference = Math.abs(expectedColumn * vApp.dotDistance - x);
