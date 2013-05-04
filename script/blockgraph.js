@@ -6,6 +6,9 @@
  * Github: vishalok12
  */
 
+/**
+ * contains information about the blocks
+ */
 function BlockGraph(dotMap) {
 	var i, j;
 	var blocks = [];
@@ -22,6 +25,9 @@ function BlockGraph(dotMap) {
 	this.blocks = blocks;
 }
 
+/**
+ * a square area covered by 4 individual edges
+ */
 function Block(i, j) {
 	var attr = {};
 	attr.top = null;
@@ -34,12 +40,22 @@ function Block(i, j) {
 	this._column = j;
 }
 
+/**
+ * get the attribute value
+ * @param {String} attr
+ * @return {*} value of attr
+ */
 Block.prototype.get = function(attr) {
 	if (this._attr.hasOwnProperty(attr)) {
 		return this._attr[attr];
 	}
 };
 
+/**
+ * set the value of the block attribute
+ * @param {String} attr
+ * @param {*} value
+ */
 Block.prototype.set = function(attr, value) {
 	if (this._attr.hasOwnProperty(attr)) {
 		this._attr[attr] = value;
@@ -47,6 +63,10 @@ Block.prototype.set = function(attr, value) {
 	}
 };
 
+/**
+ * get whether the block has all the edges selected
+ * @return {Boolean} acquired
+ */
 Block.prototype.acquired = function() {
 	if (this.get('selected') === 4) {
 		return true;
@@ -55,6 +75,14 @@ Block.prototype.acquired = function() {
 	return false;
 }
 
+/**
+ * get whether the edge is selected
+ * @param {Object|Number} row1 {row: row1, column: coln1} in case of object
+ * @param {Object|Number} coln1 {row: row2, column: coln2} in case of object
+ * @param {Number|undefined} row2
+ * @param {Number|undefined} coln2
+ * @return {Boolean} selected
+ */
 BlockGraph.prototype.isEdgeSelected = function(row1, coln1, row2, coln2) {
 	if (typeof row1 === 'object') {
 		var sourceIndex = row1;
@@ -68,6 +96,7 @@ BlockGraph.prototype.isEdgeSelected = function(row1, coln1, row2, coln2) {
 	var minColn = Math.min(coln1, coln2);
 	var blocks = this.blocks;
 
+	// find the block the edge belongs to
 	if (minRow < blocks.length) {
 		var blocksRow = blocks[minRow];
 		if (minColn < blocksRow.length) {
@@ -84,33 +113,40 @@ BlockGraph.prototype.isEdgeSelected = function(row1, coln1, row2, coln2) {
 	}
 };
 
+/**
+ * mark the edge as selected
+ * @param {Object} sourceIndex {row: rowIndex, column: columnIndex}
+ * @param {Object} destIndex
+ * @return {Boolean} acquired true if a block is captured by player
+ */
 BlockGraph.prototype.addToBlockData = function(sourceIndex, destIndex) {
 	var row, column;
 	var blocks = this.blocks;
-	var block1Selection = false;
-	var block2Selection = false;
+	var block1Acquired = false;		// first block containing the selected edge
+	var block2Acquired = false;		// second block containing the selected edge
 
+	// get the blocks the edge belongs to
 	if (sourceIndex.row === destIndex.row) {
 		row = sourceIndex.row;
 		column = Math.min(sourceIndex.column, destIndex.column);
 		if (row < blocks.length) {
 			blocks[row][column].set('top', 1);
-			block1Selection = blocks[row][column].acquired();
+			block1Acquired = blocks[row][column].acquired();
 		}
 		if (row > 0) {
 			blocks[row - 1][column].set('bottom', 1);
-			block2Selection = blocks[row - 1][column].acquired();
+			block2Acquired = blocks[row - 1][column].acquired();
 		}
 	} else if (sourceIndex.column === destIndex.column) {
 		row = Math.min(sourceIndex.row, destIndex.row);
 		column = sourceIndex.column;
 		if (column < blocks[row].length) {
 			blocks[row][column].set('left', 1);
-			block1Selection = blocks[row][column].acquired();
+			block1Acquired = blocks[row][column].acquired();
 		}
 		if (column > 0) {
 			blocks[row][column - 1].set('right', 1);
-			block2Selection = blocks[row][column - 1].acquired();
+			block2Acquired = blocks[row][column - 1].acquired();
 		}
 	}
 
@@ -120,10 +156,17 @@ BlockGraph.prototype.addToBlockData = function(sourceIndex, destIndex) {
 		destIndex: destIndex
 	}
 
-	return block1Selection || block2Selection;
+	return block1Acquired || block2Acquired;
 };
 
-BlockGraph.prototype.getNeighbourBlocks = function(dotIndex1, dotIndex2) {
+/**
+ * returns the blocks which contains the edge passed in parameter
+ * @param {Object} dotIndex1
+ * @param {Object} dotIndex2
+ * @param {Boolean} options.acquired
+ * @return {Array.<Block>} blocks
+ */
+BlockGraph.prototype.getNeighbourBlocks = function(dotIndex1, dotIndex2, options) {
 	var nBlocks = [];
 	var blocks = this.blocks;
 	var minRow = Math.min(dotIndex1.row, dotIndex2.row);
@@ -140,9 +183,20 @@ BlockGraph.prototype.getNeighbourBlocks = function(dotIndex1, dotIndex2) {
 		nBlocks.push(blocks[minRow][minColn - 1]);
 	}
 
+	if (options && !options.acquired) {
+		return nBlocks.filter(function(block) {
+			return !block.acquired();
+		});
+	}
+
 	return nBlocks;
 };
 
+/**
+ * get all the unselected edges of a block
+ * @param {Block} block
+ * @param {Array.<Object>} edges
+ */
 BlockGraph.prototype.unselectedEdges = function(block) {
 	var edges = [];
 	// get all the edges with the value null
@@ -173,6 +227,11 @@ BlockGraph.prototype.unselectedEdges = function(block) {
 	return edges;
 }
 
+/**
+ * get the sides in the graph which follows the condition passed
+ * @param {Integer} minDrawnEdges minimum selected edge in block
+ * @param {Integer} maxDrawnEdges maximum selected edge in block
+ */
 BlockGraph.prototype.sidesInBlock = function(minDrawnEdges, maxDrawnEdges) {
 	var blocks = this.blocks;
 	var row, column;

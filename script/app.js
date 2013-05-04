@@ -17,6 +17,7 @@ window.vApp = {
 };
 
 function initialize() {
+	addCustomFunctionsInNative();
 	var canvas = document.getElementById('game-area');
 	vApp.context = canvas.getContext('2d');
 	vApp.dotDistance = 45;	// pixel distance between two neighbour dots
@@ -270,6 +271,13 @@ function getVertexClicked(x, y) {
 	}
 
 	return null;
+}
+
+function addCustomFunctionsInNative() {
+	Array.prototype.flatten = function() {
+		var merged = [];
+		return merged.concat.apply(merged, this);
+	}
 }
 
 window.initialize = initialize;
