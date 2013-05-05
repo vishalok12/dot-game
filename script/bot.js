@@ -14,6 +14,9 @@ var Bot = {};
 // opponent to make a block
 var safeEdgesLeft = true;
 
+/* @type {Number} */
+var score = 0;
+
 Bot.takeTurn = function() {
 	// first check for the squares which has 3 sides drawn and if present, draw it
 	// if the graph has more than one such squares, you don't have to bother which
@@ -42,7 +45,7 @@ Bot.takeTurn = function() {
 	// 	}while (likelyBlocks.length > 0);
 
 	// }
-	likelyBlocks = blockGraph.blocks.flatten().filter(function(block) {
+	likelyBlocks = _.flatten(blockGraph.blocks).filter(function(block) {
 		return block.get('selected') === 3;
 	});
 
@@ -52,7 +55,7 @@ Bot.takeTurn = function() {
 		edges = blockGraph.unselectedEdges(block);
 		if (edges.length) {
 			edge = edges[0]; // as there must be only one unselected edge
-			blockGraph.addToBlockData(edge.sourceIndex, edge.destIndex);
+			score += blockGraph.addToBlockData(edge.sourceIndex, edge.destIndex);
 			// get the blocks which contains edge and are not acquired
 			nBlocks = blockGraph.getNeighbourBlocks(
 				edge.sourceIndex, 
@@ -84,6 +87,7 @@ Bot.takeTurn = function() {
 		// select an edge to make a turn
 		edge = intelligentMove(edges);
 		blockGraph.addToBlockData(edge.sourceIndex, edge.destIndex);
+		vApp.currentUser = 'user';
 	} else {
 		console.log('Game Over!');
 
@@ -93,6 +97,10 @@ Bot.takeTurn = function() {
 	// 	blockGraph.addToBlockData(side.sourceIndex, side.destIndex);
 	// });
  
+}
+
+Bot.getScore = function() {
+	return score;
 }
 
 // Private Functions

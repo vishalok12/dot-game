@@ -17,14 +17,15 @@ window.vApp = {
 };
 
 function initialize() {
-	addCustomFunctionsInNative();
 	var canvas = document.getElementById('game-area');
 	vApp.context = canvas.getContext('2d');
 	vApp.dotDistance = 45;	// pixel distance between two neighbour dots
 	vApp.vertexRadius = 5;	// the radius of the circle(vertex)
 	vApp.level = 1;					// game level
+	vApp.score = 0;					// score of the user
 	vApp.WIDTH = canvas.width;
 	vApp.HEIGHT = canvas.height;
+	vApp.currentUser = 'user';	// the player who has turn to play
 
 	loadLevel(vApp.level);
 	bindCanvas();
@@ -61,6 +62,17 @@ function drawGraph(dotMap) {
 	ctx.clearRect(0, 0, vApp.WIDTH, vApp.HEIGHT);
 	ctx.save();
 	ctx.translate(5, 5);
+
+	// draw the acquired blocks
+	var blocks = _.flatten(vApp.blockGraph.blocks);
+	for (index = 0; index < blocks.length; index++) {
+		if (blocks[index].acquired()) {
+			ctx.save();
+			colorBlock(blocks[index]);
+			ctx.restore();
+		}
+	}
+
 	for (row = 0; row < dotMap.length; row++) {
 		for (coln = 0; coln < dotMap[row].length; coln++) {
 			ctx.save();
@@ -88,12 +100,33 @@ function drawGraph(dotMap) {
 			ctx.restore();
 		}
 	}
+	writeScore();
 	ctx.restore();
+}
+
+function colorBlock(block) {
+	var dotDistance = vApp.dotDistance;
+	var x = block._column * dotDistance;
+	var y = block._row * dotDistance;
+	var ctx = vApp.context;
+	if (block.get('owner') === 'user') {
+		ctx.fillStyle = 'rgb(218, 76, 76)';
+	} else {
+		ctx.fillStyle = 'rgb(61, 113, 192)';		
+	}
+	ctx.fillRect(x, y, dotDistance, dotDistance);
 }
 
 function getLineColor(row1, coln1, row2, coln2) {
 	if (vApp.blockGraph.isEdgeSelected(row1, coln1, row2, coln2)) {
-		return 'rgb(115, 152, 185)';
+		var lastTurn = vApp.lastTurn;
+		if (lastTurn && _.isEqual(lastTurn.sourceIndex, {row: row1, column: coln1}) &&
+				_.isEqual(lastTurn.destIndex, {row: row2, column: coln2})) {
+			// return 'rgb(67,156,234)';
+			return 'rgb(255,50,50)';
+		} else {
+			return 'rgb(115, 152, 185)';
+		}
 	} else {
 		return 'rgba(115, 152, 185, 0.1)';
 	}
@@ -115,6 +148,17 @@ function drawVertex(radius) {
 	ctx.moveTo(0, -radius);
 	ctx.arc(0, 0, radius, 0, 2 * Math.PI, true);
 	ctx.fill();
+}
+
+/**
+ * paint the score of the players in canvas
+ */
+function writeScore() {
+	var ctx = vApp.context;
+	ctx.font = "bold 22px ubuntu";
+	ctx.fillStyle = '#dddddd';
+	ctx.fillText("You: " + vApp.score, 320, 50);
+	ctx.fillText("Computer: " + vBot.getScore(), 320, 80);
 }
 
 /**
@@ -215,10 +259,12 @@ function bindCanvas() {
 			var destIndex = dotCoordInIndex(dragDest);
 			var edgeSelected = vApp.blockGraph.isEdgeSelected(sourceIndex, destIndex);
 			if (isNeighbour(sourceIndex, destIndex) && !edgeSelected) {
-				var nextChance = vApp.blockGraph.addToBlockData(sourceIndex, destIndex);
-				if (nextChance) {
+				var acquiredBlocks = vApp.blockGraph.addToBlockData(sourceIndex, destIndex);
+				if (acquiredBlocks > 0) {
+					vApp.score += acquiredBlocks;
 					console.log('user has acquired a block');
 				} else {
+					vApp.currentUser = 'bot';	// computer's turn
 					vBot.takeTurn();
 				}
 			}
@@ -276,13 +322,6 @@ function getVertexClicked(x, y) {
 	}
 
 	return null;
-}
-
-function addCustomFunctionsInNative() {
-	Array.prototype.flatten = function() {
-		var merged = [];
-		return merged.concat.apply(merged, this);
-	}
 }
 
 window.initialize = initialize;

@@ -35,6 +35,7 @@ function Block(i, j) {
 	attr.left = null;
 	attr.right = null;
 	attr.selected = 0;
+	attr.owner = null;
 	this._attr = attr;
 	this._row = i;
 	this._column = j;
@@ -58,8 +59,11 @@ Block.prototype.get = function(attr) {
  */
 Block.prototype.set = function(attr, value) {
 	if (this._attr.hasOwnProperty(attr)) {
+		if (this._row === 0 && this._column === 1) console.log(attr);
 		this._attr[attr] = value;
-		this._attr.selected += 1;
+		if (['top', 'bottom', 'left', 'right'].indexOf(attr) > -1) {
+			this._attr.selected += 1;
+		}
 	}
 };
 
@@ -122,8 +126,7 @@ BlockGraph.prototype.isEdgeSelected = function(row1, coln1, row2, coln2) {
 BlockGraph.prototype.addToBlockData = function(sourceIndex, destIndex) {
 	var row, column;
 	var blocks = this.blocks;
-	var block1Acquired = false;		// first block containing the selected edge
-	var block2Acquired = false;		// second block containing the selected edge
+	var numOfBlocksAquired = 0;
 
 	// get the blocks the edge belongs to
 	if (sourceIndex.row === destIndex.row) {
@@ -131,22 +134,34 @@ BlockGraph.prototype.addToBlockData = function(sourceIndex, destIndex) {
 		column = Math.min(sourceIndex.column, destIndex.column);
 		if (row < blocks.length) {
 			blocks[row][column].set('top', 1);
-			block1Acquired = blocks[row][column].acquired();
+			if (blocks[row][column].acquired()) {
+				numOfBlocksAquired++;
+				blocks[row][column].set('owner', vApp.currentUser);
+			}
 		}
 		if (row > 0) {
 			blocks[row - 1][column].set('bottom', 1);
-			block2Acquired = blocks[row - 1][column].acquired();
+			if (blocks[row - 1][column].acquired()) {
+				numOfBlocksAquired++;
+				blocks[row - 1][column].set('owner', vApp.currentUser);
+			}
 		}
 	} else if (sourceIndex.column === destIndex.column) {
 		row = Math.min(sourceIndex.row, destIndex.row);
 		column = sourceIndex.column;
 		if (column < blocks[row].length) {
 			blocks[row][column].set('left', 1);
-			block1Acquired = blocks[row][column].acquired();
+			if (blocks[row][column].acquired()) {
+				numOfBlocksAquired++;
+				blocks[row][column].set('owner', vApp.currentUser);
+			}
 		}
 		if (column > 0) {
 			blocks[row][column - 1].set('right', 1);
-			block2Acquired = blocks[row][column - 1].acquired();
+			if (blocks[row][column - 1].acquired()) {
+				numOfBlocksAquired++;
+				blocks[row][column - 1].set('owner', vApp.currentUser);
+			}
 		}
 	}
 
@@ -156,7 +171,7 @@ BlockGraph.prototype.addToBlockData = function(sourceIndex, destIndex) {
 		destIndex: destIndex
 	}
 
-	return block1Acquired || block2Acquired;
+	return numOfBlocksAquired;
 };
 
 /**
