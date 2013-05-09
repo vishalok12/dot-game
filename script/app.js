@@ -17,6 +17,7 @@ window.vApp = {
 };
 
 function initialize() {
+	addCustomFunctions();
 	var canvas = document.getElementById('game-area');
 	vApp.context = canvas.getContext('2d');
 	vApp.dotDistance = 45;	// pixel distance between two neighbour dots
@@ -26,6 +27,7 @@ function initialize() {
 	vApp.WIDTH = canvas.width;
 	vApp.HEIGHT = canvas.height;
 	vApp.currentUser = 'user';	// the player who has turn to play
+	vApp.gameLevel = 'hard';
 
 	loadLevel(vApp.level);
 	bindCanvas();
@@ -322,6 +324,15 @@ function getVertexClicked(x, y) {
 	}
 
 	return null;
+}
+
+function addCustomFunctions() {
+	_.subtractObj = function(array, objToRemove) {
+		// var rest = [].slice.call(arguments, 1);
+		return array.filter(function(obj) {
+			return !_.isEqual(objToRemove, obj);
+		});
+	}
 }
 
 window.initialize = initialize;

@@ -106,8 +106,54 @@ Bot.getScore = function() {
 // Private Functions
 
 function intelligentMove(edges) {
-	var randomIndex = ~~(Math.random() * edges.length);
-	return edges[randomIndex];
+	var blockGraph = vApp.blockGraph;
+	if (safeEdgesLeft || vApp.gameLevel === 'medium') {
+		var randomIndex = ~~(Math.random() * edges.length);
+		return edges[randomIndex];
+	} else if (vApp.gameLevel === 'hard') {
+		var possibleBlocks, possibleBlock, block;
+		var edge, startEdge, selectedEdges;
+		var moves = [];
+		var unselectedBlockEdges;
+		var virtualSelectedLength, notSelected;
+
+		while (edges.length) {
+			startEdge = edge = edges.shift();
+			selectedEdges = [edge];
+			acquiredBlockCount = 0;
+			possibleBlocks = blockGraph.getNeighbourBlocks(edge.sourceIndex, edge.destIndex);
+			while (possibleBlocks.length) {
+				block = possibleBlocks.pop();
+				unselectedBlockEdges = blockGraph.unselectedEdges(block);
+				notSelected = unselectedBlockEdges.filter(function(edge) {
+					return !selectedEdges.some(function(selectedEdge) {
+						return _.isEqual(selectedEdge, edge);
+					});
+				});
+				virtualSelectedLength = unselectedBlockEdges.length - notSelected.length;
+				if (block.get('selected') + virtualSelectedLength >= 3) {
+					acquiredBlockCount ++;
+					if (notSelected.length) {
+						edge = notSelected[0];
+						edges = _.subtractObj(edges, edge);
+						selectedEdges.push(edge);
+						possibleBlock = blockGraph.getNeighbourBlocks(
+							edge.sourceIndex,
+							edge.destIndex, 
+							{ otherThan: block }
+						)[0];
+						if (possibleBlock && _.indexOf(possibleBlocks, possibleBlock) === -1) {
+							possibleBlocks.push(possibleBlock);
+						}
+					}
+				}
+			}
+
+			moves.push({edge: startEdge, count: acquiredBlockCount});
+		}
+		console.log(moves);
+		return _.min(moves, function(move) { return move.count}).edge;
+	}
 }
 
 window.vBot = Bot;

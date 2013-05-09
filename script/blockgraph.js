@@ -64,6 +64,8 @@ Block.prototype.set = function(attr, value) {
 		if (['top', 'bottom', 'left', 'right'].indexOf(attr) > -1) {
 			this._attr.selected += 1;
 		}
+	} else {
+		throw new Error(attr + ' is not defined in object');
 	}
 };
 
@@ -198,10 +200,17 @@ BlockGraph.prototype.getNeighbourBlocks = function(dotIndex1, dotIndex2, options
 		nBlocks.push(blocks[minRow][minColn - 1]);
 	}
 
-	if (options && !options.acquired) {
-		return nBlocks.filter(function(block) {
-			return !block.acquired();
-		});
+	if (options) {
+		if(!options.acquired) {
+			nBlocks = nBlocks.filter(function(block) {
+				return !block.acquired();
+			});
+		}
+		if (options.otherThan) {
+			nBlocks = nBlocks.filter(function(block) {
+				return !(_.isEqual(block, options.otherThan));
+			});
+		}
 	}
 
 	return nBlocks;
