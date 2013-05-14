@@ -22,54 +22,9 @@ Bot.takeTurn = function() {
 	// if the graph has more than one such squares, you don't have to bother which
 	// to draw first as you can fill both and it doesn't depend on order of filling
 	var blockGraph = vApp.blockGraph;
-	var lastTurn = vApp.lastTurn;
-	var block, likelyBlocks, nBlocks;
 	var edges, edge;
 
-	// if (lastTurn) {
-	// 	// check the blocks which will be affected due to the line drawn by the user
-	// 	// as there is only chance to make the block complete
-	// 	likelyBlocks = blockGraph.getNeighbourBlocks(lastTurn.sourceIndex, lastTurn.destIndex);
-	// 	do {
-	// 		block = likelyBlocks.pop();
-	// 		if (block.get('selected') === 3) {	// only one edge left to select
-	// 			edge = blockGraph.unselectedEdges(block)[0];	// as there will be only one non-selected edge
-	// 			blockGraph.addToBlockData(edge.sourceIndex, edge.destIndex);
-	// 			likelyBlocks = likelyBlocks.concat(
-	// 				// next likely blocks
-	// 				blockGraph.getNeighbourBlocks(edge.sourceIndex, edge.destIndex)
-	// 			);
-	// 			// remove the current block, as it is already acquired
-	// 			likelyBlocks.splice(likelyBlocks.indexOf(block), 1);
-	// 		}
-	// 	}while (likelyBlocks.length > 0);
-
-	// }
-	likelyBlocks = _.flatten(blockGraph.blocks).filter(function(block) {
-		return block.get('selected') === 3;
-	});
-
-	while(likelyBlocks.length) {
-		block = likelyBlocks.pop();
-		// check if the block is not acquired
-		edges = blockGraph.unselectedEdges(block);
-		if (edges.length) {
-			edge = edges[0]; // as there must be only one unselected edge
-			score += blockGraph.addToBlockData(edge.sourceIndex, edge.destIndex);
-			// get the blocks which contains edge and are not acquired
-			nBlocks = blockGraph.getNeighbourBlocks(
-				edge.sourceIndex, 
-				edge.destIndex, 
-				{acquired: false}
-			);
-			nBlocks = nBlocks.filter(function(block) {
-				return block.get('selected') === 3;
-			});
-			if (nBlocks.length > 0) {
-				likelyBlocks = likelyBlocks.concat(nBlocks);
-			}
-		}
-	}
+	acquireBlocks();
 
 	if (safeEdgesLeft) {
 		// search for an unselected edge which belongs a block with 0/1 selected edges
@@ -106,53 +61,128 @@ Bot.getScore = function() {
 // Private Functions
 
 function intelligentMove(edges) {
-	var blockGraph = vApp.blockGraph;
 	if (safeEdgesLeft || vApp.gameLevel === 'medium') {
 		var randomIndex = ~~(Math.random() * edges.length);
 		return edges[randomIndex];
-	} else if (vApp.gameLevel === 'hard') {
-		var possibleBlocks, possibleBlock, block;
-		var edge, startEdge, selectedEdges;
+	} else if (vApp.gameLevel === 'hard' || vApp.gameLevel === 'expert') {
+		var edge;
+		var acquiredBlockCount;
 		var moves = [];
-		var unselectedBlockEdges;
-		var virtualSelectedLength, notSelected;
+		var selectedEdges;
 
 		while (edges.length) {
-			startEdge = edge = edges.shift();
-			selectedEdges = [edge];
-			acquiredBlockCount = 0;
-			possibleBlocks = blockGraph.getNeighbourBlocks(edge.sourceIndex, edge.destIndex);
-			while (possibleBlocks.length) {
-				block = possibleBlocks.pop();
-				unselectedBlockEdges = blockGraph.unselectedEdges(block);
-				notSelected = unselectedBlockEdges.filter(function(edge) {
-					return !selectedEdges.some(function(selectedEdge) {
-						return _.isEqual(selectedEdge, edge);
-					});
-				});
-				virtualSelectedLength = unselectedBlockEdges.length - notSelected.length;
-				if (block.get('selected') + virtualSelectedLength >= 3) {
-					acquiredBlockCount ++;
-					if (notSelected.length) {
-						edge = notSelected[0];
-						edges = _.subtractObj(edges, edge);
-						selectedEdges.push(edge);
-						possibleBlock = blockGraph.getNeighbourBlocks(
-							edge.sourceIndex,
-							edge.destIndex, 
-							{ otherThan: block }
-						)[0];
-						if (possibleBlock && _.indexOf(possibleBlocks, possibleBlock) === -1) {
-							possibleBlocks.push(possibleBlock);
-						}
-					}
+			edge = edges.shift();
+			selectedEdges = [];
+			acquiredBlockCount = acquiredCount(edge, selectedEdges);
+			edges = difference(edges, selectedEdges);
+			moves.push({edge: edge, count: acquiredBlockCount});
+		}
+
+		var bestMove = _.min(moves, function(move) { return move.count; });
+		return bestMove.edge;
+	}
+}
+
+function acquiredCount(edge, selectedEdges) {
+	var selectedEdges = selectedEdges == undefined ? [] : selectedEdges;
+	selectedEdges.push(edge);
+	var acquiredBlockCount = 0;
+	var blockGraph = vApp.blockGraph;
+	var possibleBlocks = blockGraph.getNeighbourBlocks(edge.sourceIndex, edge.destIndex);
+	var block, unselectedBlockEdges, notSelected, virtualSelectedLength;
+	var possibleBlock;
+
+	while (possibleBlocks.length) {
+		block = possibleBlocks.pop();
+		unselectedBlockEdges = blockGraph.unselectedEdges(block);
+		notSelected = difference(unselectedBlockEdges, selectedEdges);
+		virtualSelectedLength = unselectedBlockEdges.length - notSelected.length;
+		if (block.get('selected') + virtualSelectedLength >= 3) {
+			acquiredBlockCount ++;
+			if (notSelected.length) {
+				edge = notSelected[0];
+				selectedEdges.push(edge);
+				possibleBlock = blockGraph.getNeighbourBlocks(
+					edge.sourceIndex,
+					edge.destIndex, 
+					{ otherThan: block }
+				)[0];
+				if (possibleBlock && _.indexOf(possibleBlocks, possibleBlock) === -1) {
+					possibleBlocks.push(possibleBlock);
 				}
 			}
-
-			moves.push({edge: startEdge, count: acquiredBlockCount});
 		}
-		console.log(moves);
-		return _.min(moves, function(move) { return move.count}).edge;
+
+	}
+
+	return acquiredBlockCount;
+}
+
+function difference(arr1, arr2) {
+	return arr1.filter(function(value1) {
+		return !arr2.some(function(value2) {
+			return _.isEqual(value1, value2);
+		});
+	});
+}
+
+function acquireBlocks() {
+	var leaveSomeBlocks = false;
+	var blockGraph = vApp.blockGraph;
+	var i;
+	var block, edge, count;
+	var likelyBlocks = _.flatten(blockGraph.blocks).filter(function(block) {
+		return block.get('selected') === 3;
+	});
+
+	if (vApp.gameLevel === 'expert' && !safeEdgesLeft) {
+		for (i = 0; i < likelyBlocks.length; i++) {
+			block = likelyBlocks[i];
+			edge = blockGraph.unselectedEdges(block)[0];
+			count = acquiredCount(edge);
+			if (count > 2) {
+				leaveSomeBlocks = true;
+				break;
+			}
+		}
+
+		if (leaveSomeBlocks) {
+			likelyBlocks.splice(i, 1);
+			acquire([block], count - 2);
+		}
+	}
+
+	acquire(likelyBlocks);
+}
+
+function acquire(likelyBlocks, maxCount) {
+	var block, edges;
+	var edge, nBlocks;
+	var blockGraph = vApp.blockGraph;
+
+	while(likelyBlocks.length && (maxCount === undefined || maxCount > 0)) {
+		block = likelyBlocks.pop();
+		// check if the block is not acquired
+		edges = blockGraph.unselectedEdges(block);
+		if (edges.length) {
+			if (maxCount !== undefined) {
+				maxCount --;
+			}
+			edge = edges[0]; // as there must be only one unselected edge
+			score += blockGraph.addToBlockData(edge.sourceIndex, edge.destIndex);
+			// get the blocks which contains edge and are not acquired
+			nBlocks = blockGraph.getNeighbourBlocks(
+				edge.sourceIndex, 
+				edge.destIndex, 
+				{acquired: false}
+			);
+			nBlocks = nBlocks.filter(function(block) {
+				return block.get('selected') === 3;
+			});
+			if (nBlocks.length > 0) {
+				likelyBlocks = likelyBlocks.concat(nBlocks);
+			}
+		}
 	}
 }
 
